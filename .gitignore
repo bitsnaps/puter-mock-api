@@ -9,3 +9,4 @@ docs/
 .env.test
 cov
 .DS_Store
+deno.lock
