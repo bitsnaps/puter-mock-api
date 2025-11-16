@@ -1,0 +1,11 @@
+docs/
+
+.deno_plugins
+.vscode
+.idea
+.env
+.env.development
+.env.production
+.env.test
+cov
+.DS_Store

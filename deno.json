@@ -1,0 +1,11 @@
+{
+  "tasks": {
+    "start": "deno run -A main.js",
+    "dev": "deno run --watch main.js",
+    "test": "deno test -A"
+  },
+  "imports": {
+    "@std/assert": "jsr:@std/assert@1"
+  },
+  "unstable": ["kv"]
+}
