@@ -1,4 +1,4 @@
-import { assertEquals, assert } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import "./main.js";
 
 const BASE = "http://localhost:8000";
@@ -41,7 +41,9 @@ Deno.test("FS write/read/list/delete", async () => {
   assert(listRes.ok);
   const list = await listRes.json();
   assert(Array.isArray(list.items));
-  const delRes = await fetch(`${BASE}/api/fs/delete?path=/docs/hello.txt`, { method: "DELETE" });
+  const delRes = await fetch(`${BASE}/api/fs/delete?path=/docs/hello.txt`, {
+    method: "DELETE",
+  });
   assert(delRes.ok);
   await delRes.json();
 });
@@ -50,7 +52,10 @@ Deno.test("AI chat non-stream mock", async () => {
   const res = await fetch(`${BASE}/api/ai/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "mock-echo", messages: [{ role: "user", content: "Hello" }] }),
+    body: JSON.stringify({
+      model: "mock-echo",
+      messages: [{ role: "user", content: "Hello" }],
+    }),
   });
   assert(res.ok);
   const data = await res.json();
@@ -62,7 +67,11 @@ Deno.test("AI chat streaming mock", async () => {
   const res = await fetch(`${BASE}/api/ai/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ stream: true, model: "mock-echo", messages: [{ role: "user", content: "Hello streaming" }] }),
+    body: JSON.stringify({
+      stream: true,
+      model: "mock-echo",
+      messages: [{ role: "user", content: "Hello streaming" }],
+    }),
   });
   assert(res.ok);
   const reader = res.body?.getReader();

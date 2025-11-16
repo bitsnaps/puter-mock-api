@@ -65,8 +65,30 @@ function parseAuthUser(req) {
 function randName() {
   // Minimalistic random name generator (similar to puter.randName)
   // Winds up with readable and short names.
-  const nouns = ["sky", "river", "leaf", "stone", "tree", "star", "cloud", "wind", "sun", "moon"];
-  const adjs = ["blue", "quiet", "swift", "bright", "soft", "sharp", "calm", "wild", "bold", "misty"];
+  const nouns = [
+    "sky",
+    "river",
+    "leaf",
+    "stone",
+    "tree",
+    "star",
+    "cloud",
+    "wind",
+    "sun",
+    "moon",
+  ];
+  const adjs = [
+    "blue",
+    "quiet",
+    "swift",
+    "bright",
+    "soft",
+    "sharp",
+    "calm",
+    "wild",
+    "bold",
+    "misty",
+  ];
   const i1 = Math.floor(Math.random() * adjs.length);
   const i2 = Math.floor(Math.random() * nouns.length);
   const tail = Math.random().toString(36).slice(2, 6);
@@ -300,7 +322,10 @@ async function fsList(uid, dirPath) {
     // Child may be a file or a subdir
     const childPath = dp + first + (rel.indexOf("/") !== -1 ? "/" : "");
     if (!seen.has(childPath)) {
-      seen.set(childPath, entry.value?.type || (childPath.endsWith("/") ? "dir" : "file"));
+      seen.set(
+        childPath,
+        entry.value?.type || (childPath.endsWith("/") ? "dir" : "file"),
+      );
     }
   }
 
@@ -363,7 +388,9 @@ function estimateTokensFromText(text) {
 }
 
 function estimatePromptTokens(messages) {
-  const joined = (messages || []).map((m) => String(m?.content || "")).join("\n");
+  const joined = (messages || []).map((m) => String(m?.content || "")).join(
+    "\n",
+  );
   return estimateTokensFromText(joined);
 }
 
@@ -371,7 +398,9 @@ async function recordUsage(uid, usage) {
   try {
     const key = ["ai_usage", uid, Date.now()];
     await kv.set(key, usage);
-  } catch (_) {}
+  } catch (_) {
+    // silent catch
+  }
 }
 
 async function aiChatComplete(uid, messages, model) {
@@ -379,13 +408,19 @@ async function aiChatComplete(uid, messages, model) {
   const openaiBase = safeEnv("OPENAI_BASE_URL") || "https://api.openai.com";
   const selectedModel = model || (openaiKey ? "gpt-4o-mini" : "mock-echo");
 
-  if (!openaiKey || selectedModel === "mock-echo" || selectedModel.startsWith("mock:")) {
-    const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content || "";
+  if (
+    !openaiKey || selectedModel === "mock-echo" ||
+    selectedModel.startsWith("mock:")
+  ) {
+    const lastUser = [...messages].reverse().find((m) =>
+      m.role === "user"
+    )?.content || "";
     const reply = `Echo: ${String(lastUser).slice(0, 200)}`;
     const usage = {
       prompt_tokens: estimatePromptTokens(messages),
       completion_tokens: estimateTokensFromText(reply),
-      total_tokens: estimatePromptTokens(messages) + estimateTokensFromText(reply),
+      total_tokens: estimatePromptTokens(messages) +
+        estimateTokensFromText(reply),
       model: selectedModel,
       provider: "mock",
     };
@@ -393,7 +428,11 @@ async function aiChatComplete(uid, messages, model) {
     return {
       object: "chat.completion",
       model: selectedModel,
-      choices: [{ index: 0, message: { role: "assistant", content: reply }, finish_reason: "stop" }],
+      choices: [{
+        index: 0,
+        message: { role: "assistant", content: reply },
+        finish_reason: "stop",
+      }],
       usage,
       provider: "mock",
     };
@@ -403,7 +442,10 @@ async function aiChatComplete(uid, messages, model) {
   const url = `${openaiBase.replace(/\/$/, "")}/v1/chat/completions`;
   const res = await fetch(url, {
     method: "POST",
-    headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+    headers: {
+      Authorization: `Bearer ${openaiKey}`,
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(payload),
   });
 
@@ -413,7 +455,8 @@ async function aiChatComplete(uid, messages, model) {
     const usage = {
       prompt_tokens: estimatePromptTokens(messages),
       completion_tokens: estimateTokensFromText(reply),
-      total_tokens: estimatePromptTokens(messages) + estimateTokensFromText(reply),
+      total_tokens: estimatePromptTokens(messages) +
+        estimateTokensFromText(reply),
       model: selectedModel,
       provider: "openai",
     };
@@ -421,7 +464,11 @@ async function aiChatComplete(uid, messages, model) {
     return {
       object: "chat.completion",
       model: selectedModel,
-      choices: [{ index: 0, message: { role: "assistant", content: reply }, finish_reason: "stop" }],
+      choices: [{
+        index: 0,
+        message: { role: "assistant", content: reply },
+        finish_reason: "stop",
+      }],
       usage,
       provider: "openai",
     };
@@ -431,7 +478,8 @@ async function aiChatComplete(uid, messages, model) {
   const content = data?.choices?.[0]?.message?.content ?? "";
   const usage = {
     prompt_tokens: data?.usage?.prompt_tokens ?? estimatePromptTokens(messages),
-    completion_tokens: data?.usage?.completion_tokens ?? estimateTokensFromText(content),
+    completion_tokens: data?.usage?.completion_tokens ??
+      estimateTokensFromText(content),
     total_tokens:
       (data?.usage?.prompt_tokens ?? estimatePromptTokens(messages)) +
       (data?.usage?.completion_tokens ?? estimateTokensFromText(content)),
@@ -442,7 +490,11 @@ async function aiChatComplete(uid, messages, model) {
   return {
     object: "chat.completion",
     model: selectedModel,
-    choices: [{ index: 0, message: { role: "assistant", content }, finish_reason: "stop" }],
+    choices: [{
+      index: 0,
+      message: { role: "assistant", content },
+      finish_reason: "stop",
+    }],
     usage,
     provider: "openai",
   };
@@ -451,15 +503,27 @@ async function aiChatComplete(uid, messages, model) {
 async function aiAvailableModels() {
   const openaiKey = safeEnv("OPENAI_API_KEY");
   const openaiBase = safeEnv("OPENAI_BASE_URL") || "https://api.openai.com";
-  const models = [{ id: "mock-echo", provider: "mock", type: "chat", context: 4096 }];
+  const models = [{
+    id: "mock-echo",
+    provider: "mock",
+    type: "chat",
+    context: 4096,
+  }];
   if (!openaiKey) return models;
   const url = `${openaiBase.replace(/\/$/, "")}/v1/models`;
   try {
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${openaiKey}` } });
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${openaiKey}` },
+    });
     if (!res.ok) return models;
     const data = await res.json();
     const list = Array.isArray(data?.data) ? data.data : [];
-    const normalized = list.map((m) => ({ id: String(m.id), provider: "openai", type: "chat", context: 128000 }));
+    const normalized = list.map((m) => ({
+      id: String(m.id),
+      provider: "openai",
+      type: "chat",
+      context: 128000,
+    }));
     return models.concat(normalized);
   } catch (_) {
     return models;
@@ -472,18 +536,34 @@ async function aiChatStream(uid, messages, model) {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
-      controller.enqueue(encoder.encode(JSON.stringify({ type: "start", model: res.model }) + "\n"));
+      controller.enqueue(
+        encoder.encode(
+          JSON.stringify({ type: "start", model: res.model }) + "\n",
+        ),
+      );
       const parts = String(text).split(/\s+/);
       for (const p of parts) {
-        controller.enqueue(encoder.encode(JSON.stringify({ type: "delta", data: p + " " }) + "\n"));
+        controller.enqueue(
+          encoder.encode(
+            JSON.stringify({ type: "delta", data: p + " " }) + "\n",
+          ),
+        );
         await new Promise((r) => setTimeout(r, 5));
       }
-      controller.enqueue(encoder.encode(JSON.stringify({ type: "usage", usage: res.usage }) + "\n"));
-      controller.enqueue(encoder.encode(JSON.stringify({ type: "end" }) + "\n"));
+      controller.enqueue(
+        encoder.encode(
+          JSON.stringify({ type: "usage", usage: res.usage }) + "\n",
+        ),
+      );
+      controller.enqueue(
+        encoder.encode(JSON.stringify({ type: "end" }) + "\n"),
+      );
       controller.close();
     },
   });
-  return new Response(stream, { headers: { "Content-Type": "application/x-ndjson", ...CORS_HEADERS } });
+  return new Response(stream, {
+    headers: { "Content-Type": "application/x-ndjson", ...CORS_HEADERS },
+  });
 }
 
 // ------------------------------
@@ -586,7 +666,7 @@ async function handle(req) {
       return badRequest("Invalid JSON");
     }
     const path = body?.path;
-    let content = body?.content;
+    const content = body?.content;
     const encoding = (body?.encoding || "utf8").toLowerCase();
     if (!path || content === undefined || content === null) {
       return badRequest("path and content are required");
@@ -596,7 +676,7 @@ async function handle(req) {
     let bytes;
     try {
       if (encoding === "base64") {
-        bytes = Uint8Array.from(atob(String(content)), c => c.charCodeAt(0));
+        bytes = Uint8Array.from(atob(String(content)), (c) => c.charCodeAt(0));
       } else {
         bytes = new TextEncoder().encode(String(content));
       }
