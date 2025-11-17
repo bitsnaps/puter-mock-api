@@ -588,6 +588,9 @@ async function handle(req) {
         "/api/simple",
         "/api/hello",
         "/api/randName",
+        "/login (POST)",
+        "/login/otp (POST)",
+        "/logout (POST)",
         "/api/kv/set (POST)",
         "/api/kv/get (GET)",
         "/api/kv/delete (DELETE)",
@@ -612,6 +615,71 @@ async function handle(req) {
   }
   if (req.method === "GET" && pathname === "/api/hello") {
     return ok({ message: "Hello, World!" });
+  }
+
+  if (req.method === "POST" && pathname === "/login") {
+    let body;
+    try {
+      body = await req.json();
+    } catch {
+      return badRequest("Invalid JSON");
+    }
+    const username = String(body?.username || "").trim();
+    const password = String(body?.password || "").trim();
+    if (!username || !password) {
+      return badRequest("username and password are required");
+    }
+    const needsOtp = /otp/i.test(username) || /2fa/i.test(username);
+    if (needsOtp) {
+      const otpToken = Math.random().toString(36).slice(2) +
+        Math.random().toString(36).slice(2);
+      await kv.set(["auth", "otp", otpToken], {
+        username,
+        created_at: Date.now(),
+      });
+      return ok({ proceed: true, next_step: "otp", otp_jwt_token: otpToken });
+    }
+    const token = Math.random().toString(36).slice(2) +
+      Math.random().toString(36).slice(2);
+    await kv.set(["auth", "token", token], {
+      username,
+      created_at: Date.now(),
+    });
+    return ok({ proceed: true, token });
+  }
+
+  if (req.method === "POST" && pathname === "/login/otp") {
+    let body;
+    try {
+      body = await req.json();
+    } catch {
+      return badRequest("Invalid JSON");
+    }
+    const otpToken = String(body?.token || "").trim();
+    const code = String(body?.code || "").trim();
+    if (!otpToken || !code) return badRequest("token and code are required");
+    if (!/^[0-9]{6}$/.test(code)) return badRequest("Invalid OTP code");
+    const r = await kv.get(["auth", "otp", otpToken]);
+    if (!r.value) return badRequest("Invalid or expired token");
+    const username = r.value.username || "user";
+    await kv.delete(["auth", "otp", otpToken]);
+    const token = Math.random().toString(36).slice(2) +
+      Math.random().toString(36).slice(2);
+    await kv.set(["auth", "token", token], {
+      username,
+      created_at: Date.now(),
+      via: "otp",
+    });
+    return ok({ proceed: true, next_step: "complete", token });
+  }
+
+  if (req.method === "POST" && pathname === "/logout") {
+    const auth = req.headers.get("authorization") || "";
+    const m = auth.match(/^Bearer\s+(.+)$/i);
+    if (!m) return ok({ proceed: true, status: "already_logged_out" });
+    const token = m[1].trim();
+    await kv.delete(["auth", "token", token]);
+    return ok({ proceed: true, status: "logged_out" });
   }
 
   // Rand name
